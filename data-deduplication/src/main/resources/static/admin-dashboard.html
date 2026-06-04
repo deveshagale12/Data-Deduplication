@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaultPro | Admin Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+.sidebar { background: #0f172a; transition: all 0.3s ease-in-out; }
+.active-link { background: #1e293b; border-left: 4px solid #10b981; color: white !important; }
+.card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04); }
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.page-section { animation: fadeIn 0.5s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mobile Sidebar Overlay */
+#sidebarOverlay.active { display: block; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden backdrop-blur-sm lg:hidden"></div>
+
+	<aside id="mainSidebar" class="sidebar fixed inset-y-0 left-0 w-72 flex flex-col h-full text-slate-400 z-50 shadow-2xl transform -translate-x-full lg:relative lg:translate-x-0">
+		<div class="p-8 text-white font-extrabold text-2xl flex items-center justify-between border-b border-slate-800/50">
+			<div class="flex items-center gap-3">
+                <div class="bg-emerald-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/50">
+                    <i class="fa-solid fa-user-shield text-white"></i>
+                </div>
+                <span>VAULT<span class="text-emerald-500 text-xs italic font-black uppercase ml-1">Admin</span></span>
+            </div>
+            <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+		</div>
+
+		<nav class="flex-1 px-4 mt-6 space-y-2 overflow-y-auto custom-scroll">
+			<div class="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Infrastructure</div>
+			<button onclick="showSection('users')" id="nav-users" class="nav-item w-full flex items-center gap-4 p-4 rounded-2xl hover:text-white hover:bg-slate-800 transition active-link">
+				<i class="fa-solid fa-users-gear text-lg"></i> <span class="font-bold text-sm">User Nodes</span>
+			</button>
+			<button onclick="showSection('files')" id="nav-files" class="nav-item w-full flex items-center gap-4 p-4 rounded-2xl hover:text-white hover:bg-slate-800 transition">
+				<i class="fa-solid fa-server text-lg"></i> <span class="font-bold text-sm">Global Storage</span>
+			</button>
+			<button onclick="showSection('logs')" id="nav-logs" class="nav-item w-full flex items-center gap-4 p-4 rounded-2xl hover:text-white hover:bg-slate-800 transition">
+				<i class="fa-solid fa-microchip text-lg"></i> <span class="font-bold text-sm">Audit Trail</span>
+			</button>
+		</nav>
+
+		<div class="p-6 border-t border-slate-800/50">
+			<button onclick="logout()" class="w-full flex items-center gap-4 p-4 text-rose-400 font-bold hover:bg-rose-500/10 rounded-2xl transition text-sm text-left">
+				<i class="fa-solid fa-power-off"></i> Terminate Admin Session
+			</button>
+		</div>
+	</aside>
+
+	<div class="flex-1 flex flex-col h-full overflow-hidden">
+		<header class="h-20 bg-white border-b flex items-center justify-between px-4 lg:px-10">
+			<div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                    <i class="fa-solid fa-bars-staggered text-xl"></i>
+                </button>
+                <h2 class="text-sm lg:text-xl font-black text-slate-800 uppercase tracking-tight truncate">System Overview</h2>
+            </div>
+			<div class="flex items-center gap-4">
+				<div id="adminNameDisplay" class="hidden md:block text-xs font-bold text-slate-600 mr-4"></div>
+				<span class="flex items-center gap-2 text-[8px] lg:text-[10px] font-black uppercase text-emerald-500 bg-emerald-50 px-3 lg:px-4 py-2 rounded-full border border-emerald-100">
+					<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+					<span class="hidden sm:inline">Security Engine:</span> Active
+				</span>
+			</div>
+		</header>
+
+		<main class="p-4 lg:p-10 flex-1 overflow-y-auto bg-slate-50/50 custom-scroll">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-8 mb-6 lg:mb-10">
+				<div class="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border">
+					<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Upload Frequency</p>
+					<div class="h-[200px] lg:h-[250px] w-full relative">
+						<canvas id="uploadChart"></canvas>
+					</div>
+				</div>
+				<div class="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border">
+					<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Role Distribution</p>
+					<div class="h-[200px] lg:h-[250px] w-full relative">
+						<canvas id="rolePieChart"></canvas>
+					</div>
+				</div>
+			</div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8 mb-6 lg:mb-10">
+				<div class="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border text-center lg:text-left hover:scale-105 transition-transform">
+					<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total User Nodes</p>
+					<h3 id="statUsers" class="text-3xl lg:text-4xl font-black text-slate-800">0</h3>
+				</div>
+				<div class="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border text-center lg:text-left hover:scale-105 transition-transform">
+					<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Files Under Encryption</p>
+					<h3 id="statFiles" class="text-3xl lg:text-4xl font-black text-blue-600">0</h3>
+				</div>
+				<div class="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border text-center lg:text-left hover:scale-105 transition-transform">
+					<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Authorized Downloads</p>
+					<h3 id="statLogs" class="text-3xl lg:text-4xl font-black text-emerald-500">0</h3>
+				</div>
+			</div>
+
+			<section id="sec-users" class="page-section">
+				<div class="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border p-6 lg:p-10">
+					<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+						<h2 class="text-xl lg:text-2xl font-black text-slate-800">User Infrastructure</h2>
+						<button onclick="loadUsers()" class="text-blue-600 text-xs font-bold uppercase hover:underline">Refresh Data</button>
+					</div>
+					<div class="overflow-x-auto">
+						<table class="w-full text-left min-w-[800px]">
+							<thead class="text-[10px] font-black uppercase text-slate-400 border-b tracking-widest">
+								<tr>
+									<th class="pb-6">Profile / Identity</th>
+									<th class="pb-6">Role</th>
+									<th class="pb-6">Contact & Address</th>
+									<th class="pb-6">Education & DOB</th>
+									<th class="pb-6">Action</th>
+								</tr>
+							</thead>
+							<tbody id="userTableBody" class="divide-y divide-slate-50"></tbody>
+						</table>
+					</div>
+				</div>
+			</section>
+
+			<section id="sec-files" class="page-section hidden">
+				<div class="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border p-6 lg:p-10">
+					<h2 class="text-xl lg:text-2xl font-black text-slate-800 mb-8">Global Storage Monitoring</h2>
+					<div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead class="text-[10px] font-black uppercase text-slate-400 border-b tracking-widest">
+                                <tr>
+                                    <th class="pb-6">Asset Name</th>
+                                    <th class="pb-6">Owner</th>
+                                    <th class="pb-6">File Type</th>
+                                    <th class="pb-6">Hash Fingerprint</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fileTableBody" class="divide-y divide-slate-50"></tbody>
+                        </table>
+                    </div>
+				</div>
+			</section>
+
+			<section id="sec-logs" class="page-section hidden">
+				<div class="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] card-shadow border p-6 lg:p-10">
+					<h2 class="text-xl lg:text-2xl font-black text-slate-800 mb-8">System Audit Trail</h2>
+					<div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead class="text-[10px] font-black uppercase text-slate-500 border-b tracking-widest">
+                                <tr>
+                                    <th class="pb-6">Asset Name</th>
+                                    <th class="pb-6">Downloader Email</th>
+                                    <th class="pb-6">Timestamp</th>
+                                    <th class="pb-6">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="globalAuditBody" class="divide-y divide-slate-50"></tbody>
+                        </table>
+                    </div>
+				</div>
+			</section>
+		</main>
+	</div>
+
+	<script>
+        const ADMIN_API = "http://localhost:8080/api/admin";
+
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+            overlay.classList.toggle('active');
+        }
+
+        async function init() {
+            const user = JSON.parse(localStorage.getItem('sessionUser'));
+            if (!user || user.role !== 'ADMIN') {
+                Swal.fire('Access Denied', 'Admin credentials required.', 'error').then(() => {
+                    window.location.href = "register.html";
+                });
+                return;
+            }
+            document.getElementById('adminNameDisplay').innerText = `SESSION ACTIVE: ${user.name}`;
+            
+            loadStats();
+            loadUsers();
+            loadCharts(); 
+        }
+
+        async function loadCharts() {
+            try {
+                const uploadRes = await fetch(`${ADMIN_API}/upload-stats`);
+                const roleRes = await fetch(`${ADMIN_API}/role-distribution`);
+                const uploadData = await uploadRes.json();
+                const roleData = await roleRes.json();
+
+                const lineCtx = document.getElementById('uploadChart').getContext('2d');
+                new Chart(lineCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(uploadData),
+                        datasets: [{
+                            label: 'Files Secured',
+                            data: Object.values(uploadData),
+                            borderColor: '#3b82f6',
+                            tension: 0.4,
+                            fill: true,
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                const pieCtx = document.getElementById('rolePieChart').getContext('2d');
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(roleData),
+                        datasets: [{
+                            data: Object.values(roleData),
+                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+                    }
+                });
+            } catch (err) { console.error("Chart Error:", err); }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${ADMIN_API}/stats`);
+                const data = await res.json();
+                document.getElementById('statUsers').innerText = data.totalUsers || 0;
+                document.getElementById('statFiles').innerText = data.totalFiles || 0;
+                document.getElementById('statLogs').innerText = data.totalLogs || 0;
+            } catch (err) { console.error("Stats fetching failed."); }
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-link'));
+            document.getElementById('sec-' + id).classList.remove('hidden');
+            document.getElementById('nav-' + id).classList.add('active-link');
+            if(id === 'files') loadFiles();
+            if(id === 'logs') loadGlobalLogs();
+            
+            // Auto close sidebar on mobile after selection
+            if(window.innerWidth < 1024) toggleSidebar();
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${ADMIN_API}/users`);
+                const users = await res.json();
+                document.getElementById('userTableBody').innerHTML = users.map(u => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-6 flex items-center gap-4">
+                            <img src="${u.profilePic || 'https://ui-avatars.com/api/?name='+u.name}" class="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl border bg-white object-cover shadow-sm">
+                            <div>
+                                <p class="font-black text-slate-800 text-sm">${u.name}</p>
+                                <p class="text-[10px] text-slate-400 font-medium">${u.email}</p>
+                            </div>
+                        </td>
+                        <td class="py-6">
+                            <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase ${u.role === 'ADMIN' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}">
+                                ${u.role}
+                            </span>
+                        </td>
+                        <td class="py-6">
+                            <p class="text-xs font-bold text-slate-700">${u.mobile || 'N/A'}</p>
+                            <p class="text-[10px] text-slate-400 font-medium">${u.address || 'No Address'}</p>
+                        </td>
+                        <td class="py-6">
+                            <p class="text-xs font-bold text-slate-700">${u.education || 'N/A'}</p>
+                            <p class="text-[10px] text-slate-400 font-medium">DOB: ${u.dob || 'Unknown'}</p>
+                        </td>
+                        <td class="py-6 text-right pr-4">
+                            <button onclick="deleteUser(${u.id})" class="p-3 text-slate-300 hover:text-rose-600 transition" title="Purge Node">
+                                <i class="fa-solid fa-user-slash text-lg lg:text-xl"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error("User loading failed."); }
+        }
+
+        async function loadFiles() {
+            try {
+                const res = await fetch(`${ADMIN_API}/all-files`);
+                const files = await res.json();
+                document.getElementById('fileTableBody').innerHTML = files.map(f => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-6 font-bold text-slate-800 text-sm italic"><i class="fa-regular fa-file-code mr-2 text-blue-500"></i>${f.fileName}</td>
+                        <td class="py-6">
+                            <p class="text-xs font-bold text-slate-700">${f.ownerName}</p>
+                            <p class="text-[10px] text-blue-500 font-black uppercase">${f.ownerEmail}</p>
+                        </td>
+                        <td class="py-6"><span class="bg-slate-100 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-slate-500">${f.fileType ? f.fileType.split('/')[1] : 'DATA'}</span></td>
+                        <td class="py-6 font-mono text-[9px] text-slate-400 tracking-tighter">SECURED_SHA256_ACTIVE</td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error("File monitoring failed."); }
+        }
+
+        async function loadGlobalLogs() {
+            try {
+                const res = await fetch(`${ADMIN_API}/global-logs`);
+                const logs = await res.json();
+                document.getElementById('globalAuditBody').innerHTML = logs.map(l => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-6 text-sm font-bold text-slate-700">${l.fileName}</td>
+                        <td class="py-6 text-sm text-emerald-600 font-black tracking-tighter">${l.downloaderEmail}</td>
+                        <td class="py-6 text-xs text-slate-400 font-medium">${new Date(l.downloadTime).toLocaleString()}</td>
+                        <td class="py-6"><span class="text-[9px] font-black text-emerald-500 uppercase bg-emerald-50 px-2 py-1 rounded border border-emerald-100">Verified</span></td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error("Audit log failed."); }
+        }
+
+        async function deleteUser(id) {
+            const result = await Swal.fire({
+                title: 'Terminate Identity?',
+                text: "All associated encrypted assets will be permanently purged from the cluster.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                confirmButtonText: 'Yes, Terminate'
+            });
+            if(result.isConfirmed) {
+                const res = await fetch(`${ADMIN_API}/users/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    Swal.fire('Node Purged', 'User identity has been removed.', 'success');
+                    loadUsers();
+                    loadStats();
+                    loadCharts();
+                }
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "register.html";
+        }
+        
+        window.onload = init;
+    </script>
+</body>
+</html>

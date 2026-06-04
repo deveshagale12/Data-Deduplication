@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaultPro | Secure Access Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 1); border-radius: 2.5rem; color: #1e293b; }
+        .input-box { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #f8fafc; outline: none; transition: 0.2s; font-size: 14px; }
+        .input-box:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .tab-active { background: white; color: #2563eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .loading-state { pointer-events: none; opacity: 0.6; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+
+    <div class="glass-panel w-full max-w-lg p-10 shadow-2xl animate__animated animate__fadeIn">
+        <div class="text-center mb-8">
+            <div class="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/40">
+                <i class="fa-solid fa-vault text-white text-xl"></i>
+            </div>
+            <h1 class="text-2xl font-black tracking-tight">VAULT<span class="text-blue-600">PRO</span></h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Infrastructure Management</p>
+        </div>
+
+        <div class="flex bg-slate-100 rounded-xl p-1 mb-8 border">
+            <button onclick="toggleTab('login')" id="btnLoginTab" class="flex-1 py-2.5 rounded-lg font-bold text-sm tab-active transition-all">Sign In</button>
+            <button onclick="toggleTab('register')" id="btnRegTab" class="flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 transition-all">Enrollment</button>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 mb-1 block">Security Email</label>
+                <input type="email" id="lEmail" placeholder="admin@vaultpro.io" required class="input-box">
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 mb-1 block">Encryption Key</label>
+                <input type="password" id="lPass" placeholder="••••••••" required class="input-box">
+            </div>
+            <div class="text-right">
+                <button type="button" onclick="handleForgotPassword()" class="text-xs font-bold text-blue-600 hover:text-blue-800">Forgot Password?</button>
+            </div>
+            <button type="submit" id="loginBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition-all shadow-xl">
+                Authorize Session
+            </button>
+        </form>
+
+        <form id="regForm" class="hidden space-y-4">
+            <div class="flex justify-center mb-2">
+                <div class="relative group">
+                    <img id="regPreview" src="https://ui-avatars.com/api/?name=Node&background=f1f5f9&color=64748b" class="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md">
+                    <label for="picInput" class="absolute -bottom-1 -right-1 bg-blue-600 text-white p-1.5 rounded-lg cursor-pointer hover:scale-110 transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                    </label>
+                    <input type="file" id="picInput" class="hidden" accept="image/*" onchange="previewImage(this)">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" id="rName" placeholder="Full Name" required class="input-box">
+                <input type="email" id="rEmail" placeholder="Email Node" required class="input-box">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="password" id="rPass" placeholder="Password" required class="input-box">
+                <select id="rRole" class="input-box font-bold text-blue-600">
+                    <option value="USER">Standard User</option>
+                    <option value="ADMIN">System Admin</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="tel" id="rMobile" placeholder="Mobile" required class="input-box">
+                <input type="text" id="rEducation" placeholder="Education" required class="input-box">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="date" id="rDob" required class="input-box">
+                <input type="text" id="rAddress" placeholder="Home Address" required class="input-box">
+            </div>
+            <button type="submit" id="regBtn" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-900 transition-all shadow-lg">
+                Initialize Secure Node
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const API = "http://localhost:8080/api/users";
+        let profilePicBase64 = "";
+
+        function toggleTab(mode) {
+            document.getElementById('loginForm').classList.toggle('hidden', mode === 'register');
+            document.getElementById('regForm').classList.toggle('hidden', mode === 'login');
+            document.getElementById('btnLoginTab').classList.toggle('tab-active', mode === 'login');
+            document.getElementById('btnRegTab').classList.toggle('tab-active', mode === 'register');
+        }
+
+        // Fast Response: Image Compression before sending
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 150; canvas.height = 150;
+                        ctx.drawImage(img, 0, 0, 150, 150);
+                        profilePicBase64 = canvas.toDataURL('image/jpeg', 0.6); // Fast 60% compression
+                        document.getElementById('regPreview').src = profilePicBase64;
+                    };
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Optimized Registration
+        document.getElementById('regForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('regBtn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Processing...';
+            btn.classList.add('loading-state');
+
+            const payload = {
+                name: document.getElementById('rName').value,
+                email: document.getElementById('rEmail').value,
+                password: document.getElementById('rPass').value,
+                role: document.getElementById('rRole').value,
+                mobile: document.getElementById('rMobile').value,
+                education: document.getElementById('rEducation').value,
+                dob: document.getElementById('rDob').value,
+                address: document.getElementById('rAddress').value,
+                profilePic: profilePicBase64
+            };
+
+            try {
+                const res = await fetch(`${API}/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    Swal.fire('Identity Enrolled', 'Welcome to VaultPro.', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', await res.text(), 'error');
+                }
+            } catch (err) {
+                Swal.fire('Cluster Offline', 'Communication failed.', 'error');
+            } finally {
+                btn.innerHTML = 'Initialize Secure Node';
+                btn.classList.remove('loading-state');
+            }
+        };
+
+        // Optimized Login
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.innerHTML = '<i class="fa-solid fa-shield animate-pulse"></i> Authorizing...';
+            btn.classList.add('loading-state');
+
+            try {
+                const res = await fetch(`${API}/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email: document.getElementById('lEmail').value,
+                        password: document.getElementById('lPass').value
+                    })
+                });
+
+                if (res.ok) {
+                    const user = await res.json();
+                    localStorage.setItem('sessionUser', JSON.stringify(user));
+                    window.location.href = (user.role === 'ADMIN') ? "admin-dashboard.html" : "index.html";
+                } else {
+                    Swal.fire('Denied', 'Invalid security credentials.', 'error');
+                }
+            } finally {
+                btn.innerHTML = 'Authorize Session';
+                btn.classList.remove('loading-state');
+            }
+        };
+
+        // --- FORGOT PASSWORD METHOD ---
+        async function handleForgotPassword() {
+            const { value: email } = await Swal.fire({
+                title: 'Recovery Handshake',
+                input: 'email',
+                inputLabel: 'Enter registered email node',
+                confirmButtonText: 'Send OTP',
+                confirmButtonColor: '#2563eb'
+            });
+
+            if (email) {
+                Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
+                const res = await fetch(`${API}/forgot-password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+
+                if (res.ok) {
+                    Swal.fire('OTP Dispatched', 'Check your secure inbox.', 'info').then(() => {
+                        handleResetPassword(email);
+                    });
+                } else {
+                    Swal.fire('Identity Error', 'Node not found.', 'error');
+                }
+            }
+        }
+
+        async function handleResetPassword(email) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Reset Security Key',
+                html:
+                    '<input id="swal-otp" class="swal2-input" placeholder="6-Digit OTP">' +
+                    '<input id="swal-newpass" type="password" class="swal2-input" placeholder="New Password">',
+                focusConfirm: false,
+                preConfirm: () => [
+                    document.getElementById('swal-otp').value,
+                    document.getElementById('swal-newpass').value
+                ]
+            });
+
+            if (formValues && formValues[0] && formValues[1]) {
+                const res = await fetch(`${API}/otp/reset-password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email: email,
+                        otp: formValues[0],
+                        newPassword: formValues[1]
+                    })
+                });
+
+                if (res.ok) {
+                    Swal.fire('Access Restored', 'Password updated successfully.', 'success');
+                } else {
+                    Swal.fire('Verification Failed', 'Invalid or expired code.', 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
