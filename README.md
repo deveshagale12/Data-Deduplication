@@ -1,3 +1,4 @@
+Data Deduplicaton using Blockchain and Advance Security using Cloud Computing
 VaultPro / CloudPortal — Secure File Vault & Sharing System
 VaultPro is a robust, secure backend platform built on Spring Boot designed for identity management, storage minimization, and controlled, granular file sharing. It implements modern security patterns such as SHA-256 deduplication and time-sensitive One-Time Passwords (OTPs) to manage file transmission safely between platform members.
 
